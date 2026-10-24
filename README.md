@@ -2,7 +2,9 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 
-Local control of Samsung soundbars (2022+ models such as the HW-Q990D) through the soundbar's own IP control API. No cloud, no SmartThings account.
+A custom Home Assistant integration for Samsung soundbars. It talks to the soundbar directly over your local network using the soundbar's IP control API, so it works without the internet or a SmartThings account.
+
+Tested with the HW-Q990D. It should also work with other recent Samsung soundbars that have the IP control setting, such as the HW-Q930D, HW-Q800D, HW-S800D and HW-S60D.
 
 ## Installation
 
@@ -30,30 +32,56 @@ Restart Home Assistant.
 
 1. Turn on IP control: SmartThings app → your soundbar → ⋮ → **Settings** → **IP control**.
 2. Give the soundbar a fixed IP address (DHCP reservation) in your router.
-3. Home Assistant discovers the soundbar on its own and shows it under **Settings → Devices & services**. To add it by hand, use **Add integration → Samsung Soundbar (IP control)** and enter its IP address.
+3. Home Assistant discovers the soundbar automatically and offers it under **Settings → Devices & services**. You can also add it yourself with **Add integration → Samsung Soundbar (IP control)** and its IP address.
 
 ## Features
 
-| Entity | What it does |
+### Media player
+
+| Feature | Details |
 |---|---|
-| Media player | Power, volume, mute, input and sound mode |
-| Audio format sensor | Incoming format as the soundbar reports it, e.g. `MAT_PCM` (Dolby Atmos over eARC) |
-| Woofer up / down buttons | Step the subwoofer level (the API can't read the level back) |
+| Power | Turn on and off |
+| Volume | Set any level from 0 to 100%, or step up and down by 1 |
+| Mute | Mute and unmute |
+| Input | eARC, ARC, HDMI 1, HDMI 2, Optical, Bluetooth, Wi-Fi |
+| Sound mode | Adaptive, Standard, Surround, Game, Movie, Music, Clear voice, DTS Virtual:X |
 
-- **Instant volume.** Volume is set in one request (~80 ms) instead of one key press per step, and Home Assistant shows the new level immediately.
-- **Mute sets, never toggles,** so it can't end up inverted.
-- **Off is off.** When the soundbar is off, only its power state is read and the entity shows *off*, not *unavailable*.
-- **Rides out Wi-Fi blips.** Up to two missed polls keep the last state; the entity goes unavailable only after the third.
-- **Recovers by itself.** The soundbar keeps only a few access tokens and silently drops old ones; the integration renews its token and retries.
-- **Follows IP changes.** The soundbar is identified by its UPnP ID, so discovery updates its address if it changes.
-- **Adjustable poll interval** (1–60 s, default 3 s) under **Configure**. One poll takes about 0.15 s.
-- Diagnostics download, and **Reconfigure** to change the IP by hand.
+Volume, mute, input and sound mode changes appear in Home Assistant as soon as the command is sent. Changes made with the soundbar's remote, its buttons or through the TV appear at the next poll.
 
-Older models without the `volumeControl` or `muteControl` methods fall back to key presses automatically.
+### Sensor
 
-## Not available locally
+**Audio format**: the format of the incoming audio as the soundbar reports it, for example `MAT_PCM` for Dolby Atmos over eARC.
 
-Night mode, voice enhancement, bass boost and sound grouping aren't part of the soundbar's local API. They can only be changed through the SmartThings cloud.
+### Buttons
+
+**Woofer up** and **Woofer down** raise or lower the subwoofer level by one step.
+
+### Device
+
+The soundbar is added as one device with its model, model ID and serial number. Discovery recognises it by its UPnP ID, so if it gets a new IP address Home Assistant updates the address by itself.
+
+## Configuration
+
+**Configure** on the integration lets you set the poll interval: how often Home Assistant reads the soundbar's state (1–60 s, default 3 s). One poll takes about 0.15 s.
+
+**Reconfigure** lets you change the IP address by hand.
+
+## Behaviour
+
+- When the soundbar is off, the media player shows **off**, and volume, input and sound mode are empty until it's turned on.
+- If the soundbar doesn't answer, the entities keep their last state for two polls and become **unavailable** from the third.
+- The soundbar issues access tokens for its API and discards old ones when other apps request new ones. The integration requests a new token whenever its own is discarded.
+- On models without the direct volume and mute commands, the integration uses the remote control's volume and mute keys instead.
+
+## Limitations
+
+- Night mode, voice enhancement, bass boost and sound grouping aren't part of the soundbar's local API, so this integration can't control them.
+- The woofer level can be changed but not read.
+
+## Troubleshooting
+
+- **Can't connect:** check that IP control is on in the SmartThings app and that Home Assistant can reach the soundbar's IP address. The API listens on port 1516.
+- **Diagnostics:** Settings → Devices & services → Samsung Soundbar (IP control) → ⋮ → **Download diagnostics**.
 
 ## Development
 

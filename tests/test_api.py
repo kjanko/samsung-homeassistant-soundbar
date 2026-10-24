@@ -1,26 +1,20 @@
 """Tests for the soundbar API client against a fake soundbar."""
 
 import asyncio
+import json
 import sys
 import unittest
 from pathlib import Path
 
-from aiohttp import web
-from aiohttp.test_utils import TestServer
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "custom_components" / "samsung_soundbar_ip"))
 
 import aiohttp
-import pytest
 from api import (  # noqa: E402
     SoundbarApiError,
     SoundbarClient,
     SoundbarConnectionError,
     parse_upnp_description,
 )
-
-# The fake soundbar is a real local HTTP server; HA's test plugin blocks sockets by default
-pytestmark = pytest.mark.enable_socket
 
 UPNP_XML = """<?xml version="1.0"?>
 <root xmlns="urn:samsung.com:device-1-0">
@@ -54,13 +48,13 @@ class FakeSoundbar:
     def drop_tokens(self):
         self.tokens.clear()
 
-    async def handle(self, request: web.Request) -> web.Response:
+    async def handle(self, raw: str) -> dict:
         self.in_flight += 1
         self.max_in_flight = max(self.max_in_flight, self.in_flight)
         try:
             await asyncio.sleep(0.005)
-            body = await request.json()
-            return web.json_response(self.dispatch(body["method"], body.get("params", {})))
+            body = json.loads(raw)
+            return self.dispatch(body["method"], body.get("params", {}))
         finally:
             self.in_flight -= 1
 
@@ -126,28 +120,63 @@ class FakeSoundbar:
         return {"jsonrpc": "2.0", "id": "1", "error": {"code": -32601, "message": "Method not found"}}
 
 
+class FakeResponse:
+    def __init__(self, payload):
+        self._payload = payload
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    def raise_for_status(self):
+        pass
+
+    async def json(self, content_type=None):
+        return self._payload
+
+    async def text(self):
+        return self._payload
+
+
+class FakeSession:
+    """Stands in for aiohttp.ClientSession, so the tests open no sockets."""
+
+    def __init__(self, soundbar: FakeSoundbar | None):
+        self._soundbar = soundbar
+
+    def post(self, url, *, data, **kwargs):
+        if self._soundbar is None:
+            raise aiohttp.ClientConnectionError("Connection refused")
+        return _Pending(self._soundbar.handle(data))
+
+    def get(self, url, **kwargs):
+        if self._soundbar is None:
+            raise aiohttp.ClientConnectionError("Connection refused")
+        return FakeResponse(UPNP_XML)
+
+
+class _Pending:
+    """Async context manager that awaits the fake soundbar's reply on enter."""
+
+    def __init__(self, coro):
+        self._coro = coro
+
+    async def __aenter__(self):
+        return FakeResponse(await self._coro)
+
+    async def __aexit__(self, *exc):
+        return False
+
+
+
 class ClientTestCase(unittest.IsolatedAsyncioTestCase):
     fake_kwargs: dict = {}
 
     async def asyncSetUp(self):
         self.fake = FakeSoundbar(**self.fake_kwargs)
-        app = web.Application()
-        app.router.add_post("/", self.fake.handle)
-        app.router.add_get("/ip_control", self._upnp_description)
-        self.server = TestServer(app)
-        await self.server.start_server()
-        self.session = aiohttp.ClientSession()
-        self.client = SoundbarClient("127.0.0.1", self.session, port=self.server.port, upnp_port=self.server.port)
-        # The fake serves plain HTTP on one port
-        self.client._url = f"http://127.0.0.1:{self.server.port}/"
-
-    @staticmethod
-    async def _upnp_description(request):
-        return web.Response(text=UPNP_XML, content_type="text/xml")
-
-    async def asyncTearDown(self):
-        await self.session.close()
-        await self.server.close()
+        self.client = SoundbarClient("192.0.2.1", FakeSession(self.fake))
 
 
 class TestTokens(ClientTestCase):
@@ -254,11 +283,9 @@ class TestMuteFallback(ClientTestCase):
 
 class TestConnection(unittest.IsolatedAsyncioTestCase):
     async def test_unreachable_soundbar_raises_connection_error(self):
-        async with aiohttp.ClientSession() as session:
-            client = SoundbarClient("127.0.0.1", session, port=1, timeout=1)
-            client._url = "http://127.0.0.1:1/"
-            with self.assertRaises(SoundbarConnectionError):
-                await client.get_volume()
+        client = SoundbarClient("192.0.2.1", FakeSession(None))
+        with self.assertRaises(SoundbarConnectionError):
+            await client.get_volume()
 
 
 class TestUpnpParsing(unittest.TestCase):

@@ -1,17 +1,19 @@
 {
   "domain": "samsung_soundbar_ip",
   "name": "Samsung Soundbar (IP control)",
-  "version": "0.1.0",
-  "documentation": "https://github.com/kjanko/samsung-homeassistant-soundbar",
-  "issue_tracker": "https://github.com/kjanko/samsung-homeassistant-soundbar/issues",
-  "codeowners": ["@kjanko"],
+  "codeowners": [
+    "@kjanko"
+  ],
   "config_flow": true,
+  "documentation": "https://github.com/kjanko/samsung-homeassistant-soundbar",
   "integration_type": "device",
   "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/kjanko/samsung-homeassistant-soundbar/issues",
   "requirements": [],
   "ssdp": [
     {
       "deviceType": "urn:samsung.com:device:IPControlServer:1"
     }
-  ]
+  ],
+  "version": "0.1.0"
 }
