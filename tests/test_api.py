@@ -45,6 +45,7 @@ class FakeSoundbar:
         self.calls: list[str] = []
         self.in_flight = 0
         self.max_in_flight = 0
+        self.tizen_info = {"device": {"firmwareVersion": "SAT-MT8532D24WWC-1072.1", "ModelNumber": "HW-Q990D"}}
 
     def drop_tokens(self):
         self.tokens.clear()
@@ -155,6 +156,10 @@ class FakeSession:
     def get(self, url, **kwargs):
         if self._soundbar is None:
             raise aiohttp.ClientConnectionError("Connection refused")
+        if url.endswith("/api/v2/"):
+            if self._soundbar.tizen_info is None:
+                raise aiohttp.ClientConnectionError("Connection refused")
+            return FakeResponse(self._soundbar.tizen_info)
         return FakeResponse(UPNP_XML)
 
 
@@ -231,6 +236,13 @@ class TestState(ClientTestCase):
         self.assertEqual(info.serial_number, "SERIAL123")
         self.assertEqual(info.udn, "00000000-aaaa-bbbb-cccc-dddddddddddd")
         self.assertEqual(info.identifier, "22_AV_HW-Q990D")
+        self.assertEqual(info.firmware, "SAT-MT8532D24WWC-1072.1")
+
+    async def test_info_without_tizen_port(self):
+        self.fake.tizen_info = None
+        info = await self.client.get_info()
+        self.assertIsNone(info.firmware)
+        self.assertEqual(info.model, "HW-Q990D")
 
 
 class TestVolume(ClientTestCase):

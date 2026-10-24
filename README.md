@@ -58,7 +58,7 @@ Volume, mute, input and sound mode changes appear in Home Assistant as soon as t
 
 ### Device
 
-The soundbar is added as one device with its model, model ID and serial number. Discovery recognises it by its UPnP ID, so if it gets a new IP address Home Assistant updates the address by itself.
+The soundbar is added as one device with its model, model ID, serial number and firmware version. Discovery recognises it by its UPnP ID, so if it gets a new IP address Home Assistant updates the address by itself.
 
 ## Configuration
 

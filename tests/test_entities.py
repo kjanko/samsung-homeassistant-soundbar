@@ -49,6 +49,14 @@ async def test_entities_are_created(hass, entry):
     assert hass.states.get("button.q990d_woofer_down") is not None
 
 
+async def test_device_shows_firmware(hass, entry):
+    from homeassistant.helpers import device_registry as dr
+
+    (device,) = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
+    assert device.sw_version == "SAT-MT8532D24WWC-1072.1"
+    assert device.model == "HW-Q990D"
+
+
 async def test_volume_set_is_exact_and_shows_immediately(hass, entry, client):
     await hass.services.async_call(
         MP_DOMAIN, "volume_set", {"entity_id": MP, ATTR_MEDIA_VOLUME_LEVEL: 0.29}, blocking=True

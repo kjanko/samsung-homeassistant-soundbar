@@ -11,7 +11,8 @@ pytest_plugins = "pytest_homeassistant_custom_component"
 HOST = "192.168.50.238"
 UDN = "00000000-1111-2222-3333-444444444444"
 INFO = SoundbarInfo(
-    model="HW-Q990D", identifier="22_AV_HW-Q990D", name="Q990D", serial_number="SERIAL123", udn=UDN
+    model="HW-Q990D", identifier="22_AV_HW-Q990D", name="Q990D", serial_number="SERIAL123", udn=UDN,
+    firmware="SAT-MT8532D24WWC-1072.1"
 )
 
 

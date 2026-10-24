@@ -28,6 +28,9 @@ _LOGGER = logging.getLogger(__name__)
 DEFAULT_PORT = 1516
 UPNP_PORT = 9110
 UPNP_DESCRIPTION_PATH = "/ip_control"
+# Tizen device info (the soundbar runs Tizen); open, read-only
+TIZEN_PORT = 8001
+TIZEN_INFO_PATH = "/api/v2/"
 
 METHOD_NOT_FOUND = -32601
 PARSE_ERROR = -32700
@@ -70,13 +73,14 @@ class SoundbarState:
 
 @dataclass
 class SoundbarInfo:
-    """Static device details, from the API and the UPnP description."""
+    """Static device details, from the API, the UPnP description and Tizen device info."""
 
     model: str | None = None
     identifier: str | None = None
     name: str | None = None
     serial_number: str | None = None
     udn: str | None = None
+    firmware: str | None = None
 
 
 def _as_bool(value: Any) -> bool:
@@ -113,10 +117,12 @@ class SoundbarClient:
         *,
         port: int = DEFAULT_PORT,
         upnp_port: int = UPNP_PORT,
+        tizen_port: int = TIZEN_PORT,
         timeout: float = 5,
     ) -> None:
         self.host = host
         self._upnp_url = f"http://{host}:{upnp_port}{UPNP_DESCRIPTION_PATH}"
+        self._tizen_url = f"http://{host}:{tizen_port}{TIZEN_INFO_PATH}"
         self._session = session
         self._url = f"https://{host}:{port}/"
         self._timeout = aiohttp.ClientTimeout(total=timeout)
@@ -223,7 +229,7 @@ class SoundbarClient:
             return None
 
     async def get_info(self) -> SoundbarInfo:
-        """Device details. The UPnP description is best-effort."""
+        """Device details. The UPnP description and Tizen info are best-effort."""
         info = SoundbarInfo()
         try:
             async with self._session.get(self._upnp_url, timeout=self._timeout) as resp:
@@ -231,11 +237,25 @@ class SoundbarClient:
                 info = parse_upnp_description(await resp.text())
         except (TimeoutError, aiohttp.ClientError, ElementTree.ParseError) as err:
             _LOGGER.debug("No UPnP description from %s: %r", self.host, err)
+        info.firmware = await self._get_firmware()
         info.identifier = await self.get_identifier()
         if info.model is None and info.identifier:
             # "22_AV_HW-Q990D" -> "HW-Q990D"
             info.model = info.identifier.rsplit("_", 1)[-1]
         return info
+
+    async def _get_firmware(self) -> str | None:
+        try:
+            async with self._session.get(self._tizen_url, timeout=self._timeout) as resp:
+                resp.raise_for_status()
+                data = await resp.json(content_type=None)
+        except (TimeoutError, aiohttp.ClientError, ValueError) as err:
+            _LOGGER.debug("No Tizen device info from %s: %r", self.host, err)
+            return None
+        device = data.get("device") if isinstance(data, dict) else None
+        if not isinstance(device, dict):
+            return None
+        return device.get("firmwareVersion") or None
 
     # ------------------ commands ------------------
     async def set_power(self, on: bool) -> None:
