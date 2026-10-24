@@ -13,6 +13,7 @@ from api import (  # noqa: E402
     SoundbarApiError,
     SoundbarClient,
     SoundbarConnectionError,
+    SoundbarRejectedError,
     parse_upnp_description,
 )
 
@@ -243,7 +244,7 @@ class TestVolume(ClientTestCase):
             await self.client.set_volume(101)
         self.fake.volume_control = True
         self.fake.volume = 10
-        with self.assertRaises(SoundbarApiError):
+        with self.assertRaises(SoundbarRejectedError):
             await self.client._set("volumeControl", volume=150)
 
 

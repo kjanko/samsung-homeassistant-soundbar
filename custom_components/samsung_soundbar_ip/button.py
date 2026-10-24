@@ -13,7 +13,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from . import SoundbarConfigEntry
 from .api import SoundbarClient
 from .coordinator import SoundbarCoordinator
-from .entity import SoundbarEntity
+from .entity import SoundbarEntity, soundbar_command
 
 PARALLEL_UPDATES = 1
 
@@ -56,5 +56,6 @@ class SoundbarButton(SoundbarEntity, ButtonEntity):
         super().__init__(coordinator, description.key)
         self.entity_description = description
 
+    @soundbar_command
     async def async_press(self) -> None:
         await self.entity_description.press(self.coordinator.client)

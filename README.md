@@ -68,6 +68,8 @@ The soundbar is added as one device with its model, model ID and serial number. 
 
 ## Behaviour
 
+- Available sound modes differ between models. If the soundbar refuses a sound mode, Home Assistant shows an error saying so and removes that mode from the list for good.
+- If the soundbar doesn't carry out a command, Home Assistant shows an error with the reason.
 - When the soundbar is off, the media player shows **off**, and volume, input and sound mode are empty until it's turned on.
 - If the soundbar doesn't answer, the entities keep their last state for two polls and become **unavailable** from the third.
 - The soundbar issues access tokens for its API and discards old ones when other apps request new ones. The integration requests a new token whenever its own is discarded.

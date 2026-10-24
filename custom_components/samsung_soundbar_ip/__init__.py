@@ -33,7 +33,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: SoundbarConfigEntry) -> 
 
 
 async def _async_reload_on_options_change(hass: HomeAssistant, entry: SoundbarConfigEntry) -> None:
-    await hass.config_entries.async_reload(entry.entry_id)
+    # Entry data also changes when a sound mode is marked unsupported; that needs no reload
+    if dict(entry.options) != entry.runtime_data.options_at_setup:
+        await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: SoundbarConfigEntry) -> bool:

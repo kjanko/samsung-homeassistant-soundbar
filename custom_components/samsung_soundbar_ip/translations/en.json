@@ -57,5 +57,13 @@
         "name": "Woofer down"
       }
     }
+  },
+  "exceptions": {
+    "command_failed": {
+      "message": "The soundbar didn't carry out the command: {error}"
+    },
+    "sound_mode_not_supported": {
+      "message": "This soundbar doesn't support the {sound_mode} sound mode, so it has been removed from the list."
+    }
   }
 }

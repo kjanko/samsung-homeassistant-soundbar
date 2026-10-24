@@ -52,6 +52,10 @@ class SoundbarApiError(SoundbarError):
         self.code = code
 
 
+class SoundbarRejectedError(SoundbarApiError):
+    """The soundbar refused a value ({"success": false}), e.g. a sound mode this model lacks."""
+
+
 @dataclass
 class SoundbarState:
     """One snapshot of the soundbar's state."""
@@ -175,7 +179,7 @@ class SoundbarClient:
     async def _set(self, method: str, **params: Any) -> None:
         result = await self.call(method, **params)
         if isinstance(result, dict) and result.get("success") is False:
-            raise SoundbarApiError(f"{method} rejected {params}")
+            raise SoundbarRejectedError(f"{method} rejected {params}")
 
     # ------------------ reads ------------------
     async def get_power(self) -> bool:

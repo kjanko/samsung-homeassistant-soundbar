@@ -5,6 +5,8 @@ DOMAIN = "samsung_soundbar_ip"
 PLATFORMS = ["button", "media_player", "sensor"]
 
 CONF_SCAN_INTERVAL = "scan_interval"
+# Sound mode codes this soundbar has refused; kept in the entry so they stay hidden
+CONF_UNSUPPORTED_SOUND_MODES = "unsupported_sound_modes"
 DEFAULT_SCAN_INTERVAL = 3  # seconds; one poll is ~6 requests of ~50 ms
 MIN_SCAN_INTERVAL = 1
 MAX_SCAN_INTERVAL = 60

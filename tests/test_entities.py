@@ -115,3 +115,61 @@ async def test_diagnostics_redacts_ids(hass, entry):
     diag = await async_get_config_entry_diagnostics(hass, entry)
     assert diag["device"]["serial_number"] == "**REDACTED**"
     assert diag["state"]["volume"] == 10
+
+
+async def test_rejected_sound_mode_is_hidden_and_reported(hass, entry, client):
+    from homeassistant.components.media_player import ATTR_SOUND_MODE_LIST
+    from homeassistant.exceptions import HomeAssistantError
+
+    from custom_components.samsung_soundbar_ip.api import SoundbarRejectedError
+
+    client.set_sound_mode.side_effect = SoundbarRejectedError("soundModeControl rejected")
+    with pytest.raises(HomeAssistantError) as exc:
+        await hass.services.async_call(
+            MP_DOMAIN, "select_sound_mode", {"entity_id": MP, ATTR_SOUND_MODE: "Movie"}, blocking=True
+        )
+    assert exc.value.translation_key == "sound_mode_not_supported"
+    assert "Movie" not in hass.states.get(MP).attributes[ATTR_SOUND_MODE_LIST]
+    assert "Surround" in hass.states.get(MP).attributes[ATTR_SOUND_MODE_LIST]
+    # Remembered in the entry, without reloading the integration
+    assert entry.data["unsupported_sound_modes"] == ["MOVIE"]
+    assert entry.state.name == "LOADED"
+    assert hass.states.get(MP).state == STATE_ON
+
+
+async def test_hidden_sound_modes_survive_a_reload(hass, entry):
+    from homeassistant.components.media_player import ATTR_SOUND_MODE_LIST
+
+    hass.config_entries.async_update_entry(entry, data={**entry.data, "unsupported_sound_modes": ["CLEARVOICE"]})
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert "Clear voice" not in hass.states.get(MP).attributes[ATTR_SOUND_MODE_LIST]
+
+
+async def test_failed_command_is_a_readable_error(hass, entry, client):
+    from homeassistant.exceptions import HomeAssistantError
+
+    client.set_volume.side_effect = SoundbarConnectionError("timed out")
+    with pytest.raises(HomeAssistantError) as exc:
+        await hass.services.async_call(
+            MP_DOMAIN, "volume_set", {"entity_id": MP, ATTR_MEDIA_VOLUME_LEVEL: 0.5}, blocking=True
+        )
+    assert exc.value.translation_key == "command_failed"
+    assert hass.states.get(MP).attributes[ATTR_MEDIA_VOLUME_LEVEL] == 0.1
+
+
+async def test_failed_button_press_is_a_readable_error(hass, entry, client):
+    from homeassistant.exceptions import HomeAssistantError
+
+    client.woofer_up.side_effect = SoundbarConnectionError("timed out")
+    with pytest.raises(HomeAssistantError):
+        await hass.services.async_call("button", "press", {"entity_id": "button.q990d_woofer_up"}, blocking=True)
+
+
+async def test_changing_options_still_reloads(hass, entry, client):
+    from custom_components.samsung_soundbar_ip.const import CONF_SCAN_INTERVAL
+
+    calls_before = client.get_info.await_count
+    hass.config_entries.async_update_entry(entry, options={CONF_SCAN_INTERVAL: 5})
+    await hass.async_block_till_done()
+    assert client.get_info.await_count == calls_before + 1

@@ -2,11 +2,36 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable, Coroutine
+from functools import wraps
+from typing import Any, Concatenate
+
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .api import SoundbarError
 from .const import DOMAIN
 from .coordinator import SoundbarCoordinator
+
+
+def soundbar_command[E: "SoundbarEntity", **P](
+    func: Callable[Concatenate[E, P], Awaitable[None]],
+) -> Callable[Concatenate[E, P], Coroutine[Any, Any, None]]:
+    """Report a failed command as a readable error instead of a traceback."""
+
+    @wraps(func)
+    async def wrapper(self: E, *args: P.args, **kwargs: P.kwargs) -> None:
+        try:
+            await func(self, *args, **kwargs)
+        except SoundbarError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="command_failed",
+                translation_placeholders={"error": str(err)},
+            ) from err
+
+    return wrapper
 
 
 class SoundbarEntity(CoordinatorEntity[SoundbarCoordinator]):
