@@ -1,0 +1,61 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Samsung Soundbar",
+        "description": "Turn on IP control first: SmartThings app → your soundbar → ⋮ → Settings → IP control.",
+        "data": {
+          "host": "Host"
+        },
+        "data_description": {
+          "host": "IP address of the soundbar. Give it a fixed address (DHCP reservation) in your router."
+        }
+      },
+      "confirm": {
+        "description": "Add {name} at {host}?"
+      },
+      "reconfigure": {
+        "data": {
+          "host": "Host"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Can't reach the soundbar. Check the IP address and that IP control is on in the SmartThings app."
+    },
+    "abort": {
+      "already_configured": "Device is already configured",
+      "cannot_connect": "Can't reach the soundbar. Check that IP control is on in the SmartThings app.",
+      "reconfigure_successful": "Re-configuration was successful",
+      "wrong_device": "That address belongs to a different soundbar."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "scan_interval": "Poll interval (seconds)"
+        },
+        "data_description": {
+          "scan_interval": "How often to read the soundbar's state. Changes made with its own remote or through the TV show up within this time."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "audio_format": {
+        "name": "Audio format"
+      }
+    },
+    "button": {
+      "woofer_up": {
+        "name": "Woofer up"
+      },
+      "woofer_down": {
+        "name": "Woofer down"
+      }
+    }
+  }
+}
